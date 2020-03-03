@@ -9,9 +9,9 @@ Only .SRT format subtitles are supported.
 
    **`/config/config/cleansubs.sh '{{subtitles}}' ;`**
 
-   from the post processing command field.
+   from the **Post-processing command** field.
 
-   The path above is assuming you are running Bazarr from a Docker container and have a volume mount point of '/config'
+   The path shown above is assuming you are running Bazarr from a Docker container and have a volume mount point of '/config'
 
 **NOTE:** The original subtitle file will be deleted/overwritten and permanently lost.
 
