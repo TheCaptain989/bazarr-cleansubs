@@ -106,7 +106,7 @@ RC="${PIPESTATUS[2]}"  # captures awk exit status
 if [ $RC == "0" ]; then
   # Check for script completion and non-empty file
   if [ -s "$TEMPSUB" ]; then
-    mv "$TEMPSUB" "$SUB" | log
+    mv "$TEMPSUB" "$SUB"
     MSG="<br/>Subtitle cleaned: $SUB"
     echo -n "$MSG"
   else
