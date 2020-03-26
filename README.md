@@ -7,7 +7,7 @@ Only .SRT format subtitles are supported.
 1. Place the shell script file in the /config directory of Bazarr
 2. Configure a custom script from the Bazarr Settings->General screen to call:
 
-   **`/config/config/cleansubs.sh '{{subtitles}}' ;`**
+   **`/config/config/cleansubs.sh "{{subtitles}}" ;`**
 
    from the **Post-processing command** field.
 
