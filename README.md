@@ -9,7 +9,7 @@ Only .SRT format subtitles are supported.
 
    **`/config/config/cleansubs.sh "{{subtitles}}" ;`**
 
-   from the **Post-processing command** field.
+   from the **Post-processing command** field.  **Note the double quotes!**
 
    The path shown above is assuming you are running Bazarr from a Docker container and have a volume mount point of '/config'
 
