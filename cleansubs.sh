@@ -20,6 +20,13 @@
 
 TEMPSUB="$1.tmp"
 SUB="$1"
+# Parking here for future use.
+#RECYCLEBIN=$(python3 -c "import sqlite3
+#conSql = sqlite3.connect('/config/db/bazarr.db')
+#cursorObj = conSql.cursor()
+#cursorObj.execute('SELECT Value from Config WHERE Key=\"recyclebin\"')
+#print(cursorObj.fetchone()[0])
+#conSql.close()")
 
 if [ -z "$SUB" ]; then
   MSG="\nERROR: No subtitle file specified! Not called from Bazarr?"
@@ -72,7 +79,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   Timestamp=$2
   sub(Timestamp,""); sub(/\n\n/,"")
 }
-/(subtitle[sd]?|(re)?sync(ed|hronized)?|translation and review)( (&|and) correct(ed|ions))?( encoded)?( by|:)|opensubtitles|subscene|subtext:|english subtitles/ {
+/(subtitle[sd]?|(re)?sync(ed|hronized)?|translation and review|encoded)( (&|and) correct(ed|ions))?( by|:)|opensubtitles|subscene|subtext:|english subtitles/ {
   gsub(/\n/,"<br/>")
   MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " escape_html($0) "<br/>"
   indexdelta -= 1
