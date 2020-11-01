@@ -79,7 +79,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   Timestamp=$2
   sub(Timestamp,""); sub(/\n\n/,"")
 }
-/(subtitle[sd]?|(re)?sync(ed|hronized)?|translation and review|encoded)( (&|and) correct(ed|ions))?( by|:)|opensubtitles|subscene|subtext:|english subtitles/ {
+/(subtitle[sd]? )((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|created|production|extracted)( (&|and) correct(ed|ions))?( by|:)|opensubtitles|subscene|subtext:|english subtitles/ {
   gsub(/\n/,"<br/>")
   MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " escape_html($0) "<br/>"
   indexdelta -= 1
