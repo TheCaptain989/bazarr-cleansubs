@@ -5,7 +5,7 @@
 # Works on properly formatted SRT files.
 # RegEx is English only.
 # 
-# Output is designed to be compatible with the Bazarr log file format
+# Most output is designed to be compatible with the Bazarr log file format
 # Removed subtitle entries are included after the pipe symbol (|) and included in the Bazarr "Exception" details of each log entry
 
 # Dependencies:
@@ -21,6 +21,7 @@
 # 11 - awk script failed in an unknown way
 
 ### Variables
+export cleansubs_script=$(basename "$0")
 export cleansubs_tempsub="$1.tmp"
 export cleansubs_sub="$1"
 
@@ -32,10 +33,32 @@ export cleansubs_sub="$1"
 #print(cursorObj.fetchone()[0])
 #conSql.close()")
 
+### Functions
+function usage {
+  usage="
+$cleansubs_script
+Subtitle processing script designed for use with Bazarr
+
+Source: https://github.com/TheCaptain989/bazarr-cleansubs
+
+Usage:
+  $0 <subtitle>
+
+Options:
+  <subtitle>     subtitle file in SRT format
+
+Example:
+  $cleansubs_script \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"     # When used standalone on the command line
+  $cleansubs_script \"{{subtitles}}\" ;                                       # As used in Bazarr
+"
+  >&2 echo "$usage"
+}
+
 # Check for required command line argument
 if [ -z "$cleansubs_sub" ]; then
   MSG="\nERROR: No subtitle file specified! Not called from Bazarr?"
   echo -n "$MSG"
+  usage
   exit 1
 fi
 
@@ -43,6 +66,7 @@ fi
 if [ ! -f "$cleansubs_sub" ]; then
   MSG="\nERROR: Input file not found: \"$cleansubs_sub\""
   echo -n "$MSG"
+  usage
   exit 5
 fi
 
@@ -51,6 +75,7 @@ if [[ "$cleansubs_sub" != *.srt ]]; then
   # This script only works on SRT subtitles
   MSG="\nERROR: Expected SRT file. Incorrect file suffix: \"$cleansubs_sub\""
   echo -n "$MSG"
+  usage
   exit 6
 fi
 
@@ -94,7 +119,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   sub(Timestamp,""); sub(/\n\n/,"")
 }
 # Match on objectionable strings
-# /(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|production|created|extracted)( (&|and) correct(ed|ions))?( by|:) .*<\/font|opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to/ {
+/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|production|created|extracted)( (&|and) correct(ed|ions))?( by|:) .*<\/font|opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to/ {
   gsub(/\n/,"<br/>")
   MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " escape_html($0) "<br/>"
   indexdelta -= 1
@@ -138,11 +163,16 @@ if [ $RC == "0" ]; then
     mv "$cleansubs_tempsub" "$cleansubs_sub"
     MSG="<br/>Subtitle cleaned: $cleansubs_sub"
     echo -n "$MSG"
+    exit 0
   else
     MSG="<br/>ERROR: Script failed. Unable to locate or invalid file: \"$cleansubs_tempsub\""
     echo -n "$MSG"
    exit 10
   fi
+elif [ $RC == "1" ]; then
+  # No changes to subtitle file needed.  Do nothing.
+  :
+  exit 0
 else
   # awk script failed in an unknown way
   MSG="<br/>ERROR: Script encountered an unknown error processing subtitle: $cleansubs_sub"
