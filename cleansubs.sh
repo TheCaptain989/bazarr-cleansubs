@@ -99,7 +99,7 @@ BEGIN {
   FS="\n"
   IGNORECASE=1
   # Start a new log entry
-  MSGMAIN="<br/>cleansubs.sh<br/>Subtitle file: " SubTitle "<br/>"
+  MSGMAIN="cleansubs.sh: Subtitle file: " SubTitle "; "
   indexdelta=0
 }
 # Check for Byte Order Mark
@@ -120,8 +120,8 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
 }
 # Match on objectionable strings
 /(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|production|created|extracted)( (&|and) correct(ed|ions))?( by|:) .*<\/font|opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to/ {
-  gsub(/\n/,"<br/>")
-  MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " escape_html($0) "<br/>"
+  # gsub(/\n/,"<br/>")
+  MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " $0 "\\n"
   indexdelta -= 1
   next
 }
@@ -134,14 +134,14 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
     Timestamp=""
   } else {
     # Add to Bazarr Exception log
-    MSGEXT=MSGEXT "Skipping malformed entry " NR ". Entry: " Entry,Timestamp,escape_html($0) "<br/>"
+    MSGEXT=MSGEXT "Skipping malformed entry " NR ". Entry: " Entry,Timestamp,$0 "\\n"
   }
 }
 END {
   if (NR == Entries) {
     # No changes to file
     MSGMAIN=MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR
-    printf MSGMAIN "|" MSGEXT
+    printf MSGMAIN
     exit 1
   }
   # Write new subtitle file
@@ -161,11 +161,11 @@ if [ $RC == "0" ]; then
   # Check for script completion and non-empty file
   if [ -s "$cleansubs_tempsub" ]; then
     mv "$cleansubs_tempsub" "$cleansubs_sub"
-    MSG="<br/>Subtitle cleaned: $cleansubs_sub"
+    MSG="\nSubtitle cleaned: $cleansubs_sub"
     echo -n "$MSG"
     exit 0
   else
-    MSG="<br/>ERROR: Script failed. Unable to locate or invalid file: \"$cleansubs_tempsub\""
+    MSG="\nERROR: Script failed. Unable to locate or invalid file: \"$cleansubs_tempsub\""
     echo -n "$MSG"
    exit 10
   fi
@@ -175,7 +175,7 @@ elif [ $RC == "1" ]; then
   exit 0
 else
   # awk script failed in an unknown way
-  MSG="<br/>ERROR: Script encountered an unknown error processing subtitle: $cleansubs_sub"
+  MSG="\nERROR: Script encountered an unknown error processing subtitle: $cleansubs_sub"
   echo -n "$MSG"
   exit 11
 fi
