@@ -119,7 +119,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   sub(Timestamp,""); sub(/\n\n/,"")
 }
 # Match on objectionable strings
-/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|production|created|extracted)( (&|and) correct(ed|ions))?( by|:) .*<\/font|opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to/ {
+/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|translation( and review)?|encoded|improved|provided|edited|production|created|extracted)( (&|and) correct(ed|ions))?( by|:) .*<\/font|opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to|osdb\.link|thepiratebay\./ {
   # gsub(/\n/,"<br/>")
   MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " $0 "\\n"
   indexdelta -= 1
@@ -134,7 +134,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
     Timestamp=""
   } else {
     # Add to Bazarr Exception log
-    MSGEXT=MSGEXT "Skipping malformed entry " NR ". Entry: " Entry,Timestamp,$0 "\\n"
+    MSGEXT=MSGEXT "Skipping malformed entry " NR ". Entry: " Entry","Timestamp","$0 "\\n"
   }
 }
 END {
