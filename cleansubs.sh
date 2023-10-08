@@ -119,7 +119,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   sub(Timestamp,""); sub(/\n\n/,"")
 }
 # Match on objectionable strings
-/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted)( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie/ {
+/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions))( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam/ {
   # gsub(/\n/,"<br/>")
   MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " $0 "\\n"
   indexdelta -= 1
@@ -160,7 +160,7 @@ RC="${PIPESTATUS[2]}"  # captures awk exit status
 if [ $RC == "0" ]; then
   # Check for script completion and non-empty file
   if [ -s "$cleansubs_tempsub" ]; then
-    mv "$cleansubs_tempsub" "$cleansubs_sub"
+    mv -f "$cleansubs_tempsub" "$cleansubs_sub"
     MSG="\nSubtitle cleaned: $cleansubs_sub"
     echo -n "$MSG"
     exit 0
