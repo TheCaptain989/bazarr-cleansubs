@@ -8,9 +8,13 @@
 # Most output is designed to be compatible with the Bazarr log file format
 # Removed subtitle entries are included after the pipe symbol (|) and included in the Bazarr "Exception" details of each log entry
 
+# NOTE: ShellCheck linter directives appear as comments
+
 # Dependencies:
 #  awk
 #  dos2unix
+#  stat
+#  basename
 
 # Exit codes:
 #  0 - success
@@ -19,109 +23,224 @@
 #  6 - unknown subtitle file type
 # 10 - awk script failed to write temporary subtitle file
 # 11 - awk script failed in an unknown way
+# 20 - general error
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_tempsub="$1.tmp"
-export cleansubs_sub="$1"
-
-# Parking here for future use.
-#RECYCLEBIN=$(python3 -c "import sqlite3
-#conSql = sqlite3.connect('/config/db/bazarr.db')
-#cursorObj = conSql.cursor()
-#cursorObj.execute('SELECT Value from Config WHERE Key=\"recyclebin\"')
-#print(cursorObj.fetchone()[0])
-#conSql.close()")
+export cleansubs_ver="1.0"
+export cleansubs_pid=$$
+export cleansubs_log=/config/log/cleansubs.log
+export cleansubs_maxlogsize=512000
+export cleansubs_maxlog=2
+export cleansubs_debug=0
 
 ### Functions
 function usage {
   usage="
-$cleansubs_script
+$cleansubs_script   Version: $cleansubs_ver
 Subtitle processing script designed for use with Bazarr
 
 Source: https://github.com/TheCaptain989/bazarr-cleansubs
 
 Usage:
-  $0 <subtitle>
+  $0 {-f|--file} <subtitle_file> [{-d|--debug} [<level>]]
 
-Options:
-  <subtitle>     subtitle file in SRT format
+Options and Arguments:
+  -f, --file <subtitle_file>       subtitle file in SRT format
+  -d, --debug [<level>]            enable debug logging
+                                   Level is optional, default of 1 (low)
+      --help                       display this help and exit
+      --version                    display script version and exit
 
 Example:
-  $cleansubs_script \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"     # When used standalone on the command line
+  $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
   $cleansubs_script \"{{subtitles}}\" ;                                       # As used in Bazarr
 "
-  >&2 echo "$usage"
+  echo "$usage" >&2
 }
+
+# Process arguments
+# Taken from Drew Strokes post 3/24/2015:
+#  https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
+unset cleansubs_pos_params
+while (( "$#" )); do
+  case "$1" in
+    -d|--debug ) # Enable debugging, with optional level
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ] && [[ "$2" =~ ^[0-9]+$ ]]; then
+        export cleansubs_debug=$2
+        shift 2
+      else
+        export cleansubs_debug=1
+        shift
+      fi
+    ;;
+    -f|--file ) # Subtitle file
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        export cleansubs_sub="$2"
+        shift 2
+      else
+        echo "Error|Invalid option: $1 requires an argument." >&2
+        usage
+        exit 1
+      fi
+    ;;
+    --help ) # Display usage
+      usage
+      exit 0
+    ;;
+    --version ) # Display version
+      echo "$cleansubs_script $cleansubs_ver"
+      exit 0
+    ;;
+    -*) # Unknown option
+      echo "Error|Unknown option: $1" >&2
+      usage
+      exit 20
+    ;;
+    *) # preserve positional arguments
+      cleansubs_pos_params="$cleansubs_pos_params $1"
+      shift
+    ;;
+  esac
+done
+# Set positional arguments in their proper place
+eval set -- "$cleansubs_pos_params"
+
+# Check for and assign positional arguments. Named override positional.
+if [ -n "$1" ]; then
+  if [ -n "$cleansubs_sub" ]; then
+    echo "Warning|Both positional and named arguments set for subtitle file. Using $cleansubs_sub" >&2
+  else
+    cleansubs_sub="$1"
+  fi
+fi
+# Set temporary file name
+export cleansubs_tempsub="$cleansubs_sub.tmp"
+
+### Functions
+
+# Can still go over cleansubs_maxlog if read line is too long
+## Must include whole function in subshell for read to work!
+function log {(
+  while read -r; do
+    # shellcheck disable=2046
+    echo $(date +"%Y-%-m-%-d %H:%M:%S.%1N")"|[$cleansubs_pid]$REPLY" >>"$cleansubs_log"
+    local cleansubs_filesize=$(stat -c %s "$cleansubs_log")
+    if [ $cleansubs_filesize -gt $cleansubs_maxlogsize ]; then
+      for i in $(seq $((cleansubs_maxlog-1)) -1 0); do
+        [ -f "${cleansubs_log::-4}.$i.log" ] && mv "${cleansubs_log::-4}."{$i,$((i+1))}".log"
+      done
+      [ -f "${cleansubs_log::-4}.log" ] && mv "${cleansubs_log::-4}.log" "${cleansubs_log::-4}.0.log"
+      touch "$cleansubs_log"
+    fi
+  done
+)}
+# Need to export the function for subshell use!
+export -f log
+# Exit program
+function end_script {
+  # Cool bash feature
+  cleansubs_message="Info|Completed in $((SECONDS/60))m $((SECONDS%60))s"
+  echo "$cleansubs_message" | log
+  [ "$1" != "" ] && cleansubs_exitstatus=$1
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Exit code ${cleansubs_exitstatus:-0}" | log
+  exit ${cleansubs_exitstatus:-0}
+}
+### End Functions
+
+# Log Debug state
+if [ $cleansubs_debug -ge 1 ]; then
+  cleansubs_message="Debug|Enabling debug logging level ${cleansubs_debug}. Starting cleansubs run for: $cleansubs_sub"
+  echo "$cleansubs_message" | log
+fi
+
+# Log environment
+[ $cleansubs_debug -ge 2 ] && printenv | sort | sed 's/^/Debug|/' | log
 
 # Check for required command line argument
 if [ -z "$cleansubs_sub" ]; then
-  MSG="\nERROR: No subtitle file specified! Not called from Bazarr?"
-  echo -n "$MSG"
+  cleansubs_message="Error|No subtitle file specified! Not called from Bazarr?"
+  echo "$cleansubs_message" | log
+  echo "$cleansubs_message" >&2
   usage
-  exit 1
+  end_script 1
 fi
 
 # Check for existence of subtitle file
 if [ ! -f "$cleansubs_sub" ]; then
-  MSG="\nERROR: Input file not found: \"$cleansubs_sub\""
-  echo -n "$MSG"
+  cleansubs_message="Error|Input file not found: \"$cleansubs_sub\""
+  echo "$cleansubs_message" | log
+  echo "$cleansubs_message" >&2
   usage
-  exit 5
+  end_script 5
 fi
 
 # Check if subtitle is in the expected format
 if [[ "$cleansubs_sub" != *.srt ]]; then
   # This script only works on SRT subtitles
-  MSG="\nERROR: Expected SRT file. Incorrect file suffix: \"$cleansubs_sub\""
-  echo -n "$MSG"
+  cleansubs_message="Error|Expected SRT file. Incorrect file suffix: \"$cleansubs_sub\""
+  echo "$cleansubs_message" | log
+  echo "$cleansubs_message" >&2
   usage
-  exit 6
+  end_script 6
 fi
 
 # Generate temporary file name
 until [ ! -s "$cleansubs_tempsub" ]; do
   # Temporary file already exists
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Temporary file \"$cleansubs_tempsub\" already exists. Incrementing by 1." | log
   i=$((i+1))
   cleansubs_tempsub="${cleansubs_tempsub%%.*}.srt.$i.tmp"
 done
 
+[ $cleansubs_debug -ge 2 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
+
 #### BEGIN MAIN
-cat "$cleansubs_sub" | dos2unix | awk -v SubTitle="$cleansubs_sub" \
+cat "$cleansubs_sub" | dos2unix | awk -v Debug=$cleansubs_debug \
+-v SubTitle="$cleansubs_sub" \
 -v TempSub="$cleansubs_tempsub" '
 function escape_html(str){
   # escape HTML in subs
-  gsub(/&/,"\\&amp;",str);gsub(/</,"\\&lt;",str);gsub(/>/,"\\&gt;",str);gsub(/"/,"\\&quot;",str)
+  # This was needed in older versions of Bazarr that did not escape log entries.
+  # It is not used current, but leaving here for posterity.
+  gsub(/&/, "\\&amp;", str); gsub(/</, "\\&lt;", str); gsub(/>/, "\\&gt;", str); gsub(/"/, "\\&quot;", str)
   return str
 }
 BEGIN {
-  RS=""     # one or more blank lines
-  FS="\n"
-  IGNORECASE=1
+  RS = ""     # one or more blank lines
+  FS = "\n"
+  IGNORECASE = 1
+  # This is required because BusyBox awk will not honor shell exported functions, so piping fails.
+  writelog = "while read -r; do echo $(date +\"%Y-%-m-%-d %H:%M:%S.%1N\")\"|[$cleansubs_pid]$REPLY\" >>\"$cleansubs_log\"; done"
   # Start a new log entry
-  MSGMAIN="cleansubs.sh: Subtitle file: " SubTitle "; "
-  indexdelta=0
+  # NOTE: These system calls work because of the exported shell log function
+  print "Info|Starting run for subtitle file: " SubTitle | writelog
+  MSGMAIN = "cleansubs.sh: Subtitle file: " SubTitle "; "
+  indexdelta = 0
 }
 # Check for Byte Order Mark
 $1 ~ /^\xef\xbb\xbf/ {
   # Remove BOM from UTF-8 encoded file
-  if (NR == 1) { sub(/^\xef\xbb\xbf/,"") }
+  if (Debug >= 1) print "Debug|Removing BOM from UTF-8 encoded file." | writelog
+  if (NR == 1) { sub(/^\xef\xbb\xbf/, "") }
 }
 # Get entry number
 $1 ~ /^[0-9]+$/ {
-  Entry=$1
-  sub(Entry,"")
+  Entry = $1
+  sub(Entry, "")
   Entry = Entry + indexdelta
 }
 # Get timestamp
 $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3}$/ {
-  Timestamp=$2
-  sub(Timestamp,""); sub(/\n\n/,"")
+  Timestamp = $2
+  sub(Timestamp, ""); sub(/\n\n/, "")
 }
 # Match on objectionable strings
-/(subtitle[sd]? )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions))( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|- sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam/ {
-  # gsub(/\n/,"<br/>")
-  MSGEXT=MSGEXT"Removing entry " (Entry - indexdelta)": " $0 "\\n"
+/^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext/ {
+  # This was needed in older versions of Bazarr that did not escape log entries. 
+  # gsub(/\n/, "<br/>")
+  print "Info|Removing entry " (Entry - indexdelta) ": " gensub(/\n/, "<br/>", "g", $0) | writelog
+  MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta)": " $0 "\\n"
   indexdelta -= 1
   next
 }
@@ -130,23 +249,26 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   if (Entry && Timestamp) {
     # Generate a newly renumbered entry
     Newentry[++Entries] = Entry "\n" Timestamp "\n" $0
-    Entry=""
-    Timestamp=""
+    Entry = ""
+    Timestamp = ""
   } else {
     # Add to Bazarr Exception log
-    MSGEXT=MSGEXT "Skipping malformed entry " NR ". Entry: " Entry","Timestamp","$0 "\\n"
+    print "Info|Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 | writelog
+    MSGEXT = MSGEXT "Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 "\\n"
   }
 }
 END {
   if (NR == Entries) {
     # No changes to file
-    MSGMAIN=MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR
+    print "Info|No changes to subtitle file required. Total entries scanned: " NR | writelog
+    MSGMAIN = MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR
     printf MSGMAIN
     exit 1
   }
   # Write new subtitle file
-  MSGMAIN=MSGMAIN "Original entries: " NR ". Total entries kept: " Entries
-  MSGEXT=MSGEXT "Writing new temporary file: " TempSub ""
+  print "Info|Original entries: " NR ". Total entries kept: " Entries | writelog
+  if (Debug >= 1) print "Debug|Writing new temporary file: " TempSub | writelog
+  MSGMAIN = MSGMAIN "Original entries: " NR ". Total entries kept: " Entries
   printf MSGMAIN "|" MSGEXT
   for (i = 1; i <= Entries; i++)
     print Newentry[i] "\n" >> TempSub
@@ -155,27 +277,34 @@ END {
 
 #### END MAIN
 
-RC="${PIPESTATUS[2]}"  # captures awk exit status
+cleansubs_ret="${PIPESTATUS[2]}"  # captures awk exit status
+[ $cleansubs_debug -ge 2 ] && echo "Debug|awk exited with code: $cleansubs_ret" | log
 
-if [ $RC == "0" ]; then
-  # Check for script completion and non-empty file
-  if [ -s "$cleansubs_tempsub" ]; then
-    mv -f "$cleansubs_tempsub" "$cleansubs_sub"
-    MSG="\nSubtitle cleaned: $cleansubs_sub"
-    echo -n "$MSG"
-    exit 0
-  else
-    MSG="\nERROR: Script failed. Unable to locate or invalid file: \"$cleansubs_tempsub\""
-    echo -n "$MSG"
-   exit 10
-  fi
-elif [ $RC == "1" ]; then
-  # No changes to subtitle file needed.  Do nothing.
+# No changes to subtitle file needed.  Do nothing.
+if [ $cleansubs_ret -eq 1 ]; then
   :
-  exit 0
-else
-  # awk script failed in an unknown way
-  MSG="\nERROR: Script encountered an unknown error processing subtitle: $cleansubs_sub"
-  echo -n "$MSG"
-  exit 11
+  end_script 0
 fi
+
+# awk script failed in an unknown way
+if [ $cleansubs_ret -ne 0 ]; then
+  cleansubs_message="Script encountered an unknown error processing subtitle: $cleansubs_sub"
+  echo "Error|$cleansubs_message" | log
+  echo "Error|$cleansubs_message" >&2
+  echo -n "\nERROR: $cleansubs_message"
+  end_script 11
+fi
+
+# Check for non-empty file
+if [ ! -s "$cleansubs_tempsub" ]; then
+  cleansubs_message="Script failed. Unable to locate or invalid file: $cleansubs_tempsub"
+  echo "Error|$cleansubs_message" | log
+  echo "Error|$cleansubs_message" >&2
+  echo -n "\nERROR: $cleansubs_message"
+  end_script 10
+fi
+
+# Overwrite the original subtitle file with the new file
+mv -f "$cleansubs_tempsub" "$cleansubs_sub" 2>&1
+
+end_script
