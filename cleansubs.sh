@@ -76,7 +76,7 @@ while (( "$#" )); do
     ;;
     -f|--file ) # Subtitle file
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-        export cleansubs_sub="$2"
+        export cleansubs_file="$2"
         shift 2
       else
         echo "Error|Invalid option: $1 requires an argument." >&2
@@ -108,14 +108,14 @@ eval set -- "$cleansubs_pos_params"
 
 # Check for and assign positional arguments. Named override positional.
 if [ -n "$1" ]; then
-  if [ -n "$cleansubs_sub" ]; then
-    echo "Warning|Both positional and named arguments set for subtitle file. Using $cleansubs_sub" >&2
+  if [ -n "$cleansubs_file" ]; then
+    echo "Warning|Both positional and named arguments set for subtitle file. Using $cleansubs_file" >&2
   else
-    cleansubs_sub="$1"
+    cleansubs_file="$1"
   fi
 fi
 # Set temporary file name
-export cleansubs_tempsub="$cleansubs_sub.tmp"
+export cleansubs_tempsub="$cleansubs_file.tmp"
 
 ### Functions
 
@@ -150,7 +150,7 @@ function end_script {
 
 # Log Debug state
 if [ $cleansubs_debug -ge 1 ]; then
-  cleansubs_message="Debug|Enabling debug logging level ${cleansubs_debug}. Starting cleansubs run for: $cleansubs_sub"
+  cleansubs_message="Debug|Enabling debug logging level ${cleansubs_debug}. Starting cleansubs run for: $cleansubs_file"
   echo "$cleansubs_message" | log
 fi
 
@@ -158,7 +158,7 @@ fi
 [ $cleansubs_debug -ge 2 ] && printenv | sort | sed 's/^/Debug|/' | log
 
 # Check for required command line argument
-if [ -z "$cleansubs_sub" ]; then
+if [ -z "$cleansubs_file" ]; then
   cleansubs_message="Error|No subtitle file specified! Not called from Bazarr?"
   echo "$cleansubs_message" | log
   echo "$cleansubs_message" >&2
@@ -167,8 +167,8 @@ if [ -z "$cleansubs_sub" ]; then
 fi
 
 # Check for existence of subtitle file
-if [ ! -f "$cleansubs_sub" ]; then
-  cleansubs_message="Error|Input file not found: \"$cleansubs_sub\""
+if [ ! -f "$cleansubs_file" ]; then
+  cleansubs_message="Error|Input file not found: \"$cleansubs_file\""
   echo "$cleansubs_message" | log
   echo "$cleansubs_message" >&2
   usage
@@ -176,9 +176,9 @@ if [ ! -f "$cleansubs_sub" ]; then
 fi
 
 # Check if subtitle is in the expected format
-if [[ "$cleansubs_sub" != *.srt ]]; then
+if [[ "$cleansubs_file" != *.srt ]]; then
   # This script only works on SRT subtitles
-  cleansubs_message="Error|Expected SRT file. Incorrect file suffix: \"$cleansubs_sub\""
+  cleansubs_message="Error|Expected SRT file. Incorrect file suffix: \"$cleansubs_file\""
   echo "$cleansubs_message" | log
   echo "$cleansubs_message" >&2
   usage
@@ -196,8 +196,8 @@ done
 [ $cleansubs_debug -ge 2 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
 #### BEGIN MAIN
-cat "$cleansubs_sub" | dos2unix | awk -v Debug=$cleansubs_debug \
--v SubTitle="$cleansubs_sub" \
+cat "$cleansubs_file" | dos2unix | awk -v Debug=$cleansubs_debug \
+-v SubTitle="$cleansubs_file" \
 -v TempSub="$cleansubs_tempsub" '
 function escape_html(str){
   # escape HTML in subs
@@ -239,7 +239,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
 /^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext/ {
   # This was needed in older versions of Bazarr that did not escape log entries. 
   # gsub(/\n/, "<br/>")
-  print "Info|Removing entry " (Entry - indexdelta) ": " gensub(/\n/, "<br/>", "g", $0) | writelog
+  print "Info|Removing entry " (Entry - indexdelta) ": (" Timestamp ") " gensub(/\n/, "<br/>", "g", $0) | writelog
   MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta)": " $0 "\\n"
   indexdelta -= 1
   next
@@ -288,7 +288,7 @@ fi
 
 # awk script failed in an unknown way
 if [ $cleansubs_ret -ne 0 ]; then
-  cleansubs_message="Script encountered an unknown error processing subtitle: $cleansubs_sub"
+  cleansubs_message="Script encountered an unknown error processing subtitle: $cleansubs_file"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
   echo -n "\nERROR: $cleansubs_message"
@@ -305,6 +305,6 @@ if [ ! -s "$cleansubs_tempsub" ]; then
 fi
 
 # Overwrite the original subtitle file with the new file
-mv -f "$cleansubs_tempsub" "$cleansubs_sub" 2>&1
+mv -f "$cleansubs_tempsub" "$cleansubs_file" 2>&1
 
 end_script
