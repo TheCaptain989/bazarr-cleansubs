@@ -55,6 +55,7 @@ Script activity, including errors, will appear in both the script log and the na
 
 Log rotation is performed with 2 log files of 512KB each being kept.  
 
+>Note: When run outside of Bazarr, the script will create a `cleansubs.log` file in the same directory that the script is executed from.
 ___
 
 # Credits

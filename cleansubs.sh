@@ -27,12 +27,13 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.0"
+export cleansubs_ver="1.01"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
 export cleansubs_maxlog=2
 export cleansubs_debug=0
+export cleansubs_multiline=0
 
 ### Functions
 function usage {
@@ -98,7 +99,8 @@ while (( "$#" )); do
       exit 20
     ;;
     *) # preserve positional arguments
-      cleansubs_pos_params="$cleansubs_pos_params $1"
+      # This quoting and printf/sed fixes all special shell characters in files names
+      cleansubs_pos_params="$cleansubs_pos_params '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
       shift
     ;;
   esac
@@ -111,11 +113,12 @@ if [ -n "$1" ]; then
   if [ -n "$cleansubs_file" ]; then
     echo "Warning|Both positional and named arguments set for subtitle file. Using $cleansubs_file" >&2
   else
+    [ $cleansubs_debug -ge 1 ] && echo "Debug|Using position argument for subtitle file: $1"
     cleansubs_file="$1"
   fi
 fi
 # Set temporary file name
-export cleansubs_tempsub="$cleansubs_file.tmp"
+export cleansubs_tempsub="${cleansubs_file}.tmp"
 
 ### Functions
 
@@ -135,8 +138,6 @@ function log {(
     fi
   done
 )}
-# Need to export the function for subshell use!
-export -f log
 # Exit program
 function end_script {
   # Cool bash feature
@@ -147,6 +148,13 @@ function end_script {
   exit ${cleansubs_exitstatus:-0}
 }
 ### End Functions
+
+# Fix log issues when not called within Bazarr
+if [ -z "$BAZARR_VERSION" ]; then
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Not called within Bazarr. Logging to local file: cleansubs.log"
+  cleansubs_log=./cleansubs.log
+  cleansubs_multiline=1
+fi
 
 # Log Debug state
 if [ $cleansubs_debug -ge 1 ]; then
@@ -198,7 +206,8 @@ done
 #### BEGIN MAIN
 cat "$cleansubs_file" | dos2unix | awk -v Debug=$cleansubs_debug \
 -v SubTitle="$cleansubs_file" \
--v TempSub="$cleansubs_tempsub" '
+-v TempSub="$cleansubs_tempsub" \
+-v MultiLine=$cleansubs_multiline '
 function escape_html(str){
   # escape HTML in subs
   # This was needed in older versions of Bazarr that did not escape log entries.
@@ -210,10 +219,11 @@ BEGIN {
   RS = ""     # one or more blank lines
   FS = "\n"
   IGNORECASE = 1
+  # Adds line feed to output when not called from Bazarr
+  if (MultiLine = 1) NL = "\n"
   # This is required because BusyBox awk will not honor shell exported functions, so piping fails.
   writelog = "while read -r; do echo $(date +\"%Y-%-m-%-d %H:%M:%S.%1N\")\"|[$cleansubs_pid]$REPLY\" >>\"$cleansubs_log\"; done"
   # Start a new log entry
-  # NOTE: These system calls work because of the exported shell log function
   print "Info|Starting run for subtitle file: " SubTitle | writelog
   MSGMAIN = "cleansubs.sh: Subtitle file: " SubTitle "; "
   indexdelta = 0
@@ -240,7 +250,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   # This was needed in older versions of Bazarr that did not escape log entries. 
   # gsub(/\n/, "<br/>")
   print "Info|Removing entry " (Entry - indexdelta) ": (" Timestamp ") " gensub(/\n/, "<br/>", "g", $0) | writelog
-  MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta)": " $0 "\\n"
+  MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta)": " $0 "\\n" NL
   indexdelta -= 1
   next
 }
@@ -254,14 +264,14 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   } else {
     # Add to Bazarr Exception log
     print "Info|Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 | writelog
-    MSGEXT = MSGEXT "Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 "\\n"
+    MSGEXT = MSGEXT "Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 "\\n" NL
   }
 }
 END {
   if (NR == Entries) {
     # No changes to file
     print "Info|No changes to subtitle file required. Total entries scanned: " NR | writelog
-    MSGMAIN = MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR
+    MSGMAIN = MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR NL
     printf MSGMAIN
     exit 1
   }
