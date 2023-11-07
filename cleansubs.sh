@@ -19,6 +19,7 @@
 # Exit codes:
 #  0 - success
 #  1 - no subtitle file specified on command line
+#  2 - log file is not writable
 #  5 - subtitle file not found
 #  6 - unknown subtitle file type
 # 10 - awk script failed to write temporary subtitle file
@@ -27,7 +28,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.01"
+export cleansubs_ver="1.02"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -35,7 +36,12 @@ export cleansubs_maxlog=2
 export cleansubs_debug=0
 export cleansubs_multiline=0
 
-### Functions
+# Check that log path exists
+if [ ! -d /config/log ]; then
+  cleansubs_log=./cleansubs.log
+fi
+
+# Usage function
 function usage {
   usage="
 $cleansubs_script   Version: $cleansubs_ver
@@ -44,12 +50,14 @@ Subtitle processing script designed for use with Bazarr
 Source: https://github.com/TheCaptain989/bazarr-cleansubs
 
 Usage:
-  $0 {-f|--file} <subtitle_file> [{-d|--debug} [<level>]]
+  $0 {-f|--file} <subtitle_file> [{-l|--log} <log_file>] [{-d|--debug} [<level>]]
 
 Options and Arguments:
   -f, --file <subtitle_file>       subtitle file in SRT format
+  -l, --log <log_file>             log file name
+                                   [default of /config/log/cleansubs.log]
   -d, --debug [<level>]            enable debug logging
-                                   Level is optional, default of 1 (low)
+                                   Level is optional, [default of 1 (low)]
       --help                       display this help and exit
       --version                    display script version and exit
 
@@ -78,6 +86,16 @@ while (( "$#" )); do
     -f|--file ) # Subtitle file
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         export cleansubs_file="$2"
+        shift 2
+      else
+        echo "Error|Invalid option: $1 requires an argument." >&2
+        usage
+        exit 1
+      fi
+    ;;
+    -l|--log ) # Log file
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        export cleansubs_log="$2"
         shift 2
       else
         echo "Error|Invalid option: $1 requires an argument." >&2
@@ -149,10 +167,23 @@ function end_script {
 }
 ### End Functions
 
-# Fix log issues when not called within Bazarr
+# Check that the log file exists
+if [ ! -f "$cleansubs_log" ]; then
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Creating a new logfile: $cleansubs_log" | log
+  touch "$cleansubs_log" 2>&1
+fi
+
+# Check that the log file is writable
+if [ ! -w "$cleansubs_log" ]; then
+  cleansubs_log=/dev/null
+  cleansubs_message="Error|Log file '$cleansubs_log' is not writable or does not exist."
+  echo "$cleansubs_message" >&2
+  cleansubs_exitstatus=2
+fi
+
+# Log when not called from Bazarr
 if [ -z "$BAZARR_VERSION" ]; then
-  [ $cleansubs_debug -ge 1 ] && echo "Debug|Not called within Bazarr. Logging to local file: cleansubs.log"
-  cleansubs_log=./cleansubs.log
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Not called from Bazarr. Using multiline output." | log
   cleansubs_multiline=1
 fi
 
@@ -293,7 +324,7 @@ cleansubs_ret="${PIPESTATUS[2]}"  # captures awk exit status
 # No changes to subtitle file needed.  Do nothing.
 if [ $cleansubs_ret -eq 1 ]; then
   :
-  end_script 0
+  end_script ${cleansubs_exitstatus:-0}
 fi
 
 # awk script failed in an unknown way
