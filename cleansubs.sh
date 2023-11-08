@@ -19,6 +19,7 @@
 # Exit codes:
 #  0 - success
 #  1 - no subtitle file specified on command line
+#  2 - log file is not writable
 #  5 - subtitle file not found
 #  6 - unknown subtitle file type
 # 10 - awk script failed to write temporary subtitle file
@@ -27,7 +28,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.01"
+export cleansubs_ver="1.02"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -35,7 +36,12 @@ export cleansubs_maxlog=2
 export cleansubs_debug=0
 export cleansubs_multiline=0
 
-### Functions
+# Check that log path exists
+if [ ! -d /config/log ]; then
+  cleansubs_log=./cleansubs.log
+fi
+
+# Usage function
 function usage {
   usage="
 $cleansubs_script   Version: $cleansubs_ver
@@ -44,18 +50,20 @@ Subtitle processing script designed for use with Bazarr
 Source: https://github.com/TheCaptain989/bazarr-cleansubs
 
 Usage:
-  $0 {-f|--file} <subtitle_file> [{-d|--debug} [<level>]]
+  $0 {-f|--file} <subtitle_file> [{-l|--log} <log_file>] [{-d|--debug} [<level>]]
 
 Options and Arguments:
   -f, --file <subtitle_file>       subtitle file in SRT format
+  -l, --log <log_file>             log file name
+                                   [default of /config/log/cleansubs.log]
   -d, --debug [<level>]            enable debug logging
-                                   Level is optional, default of 1 (low)
+                                   Level is optional, [default of 1 (low)]
       --help                       display this help and exit
       --version                    display script version and exit
 
 Example:
   $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
-  $cleansubs_script \"{{subtitles}}\" ;                                       # As used in Bazarr
+  $cleansubs_script -f \"{{subtitles}}\" ;                                    # As used in Bazarr
 "
   echo "$usage" >&2
 }
@@ -78,6 +86,16 @@ while (( "$#" )); do
     -f|--file ) # Subtitle file
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         export cleansubs_file="$2"
+        shift 2
+      else
+        echo "Error|Invalid option: $1 requires an argument." >&2
+        usage
+        exit 1
+      fi
+    ;;
+    -l|--log ) # Log file
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        export cleansubs_log="$2"
         shift 2
       else
         echo "Error|Invalid option: $1 requires an argument." >&2
@@ -149,10 +167,23 @@ function end_script {
 }
 ### End Functions
 
-# Fix log issues when not called within Bazarr
+# Check that the log file exists
+if [ ! -f "$cleansubs_log" ]; then
+  echo "Info|Creating a new logfile: $cleansubs_log"
+  touch "$cleansubs_log" 2>&1
+fi
+
+# Check that the log file is writable
+if [ ! -w "$cleansubs_log" ]; then
+  cleansubs_message="Error|Log file '$cleansubs_log' is not writable or does not exist."
+  echo "$cleansubs_message" >&2
+  cleansubs_log=/dev/null
+  cleansubs_exitstatus=2
+fi
+
+# Log when not called from Bazarr
 if [ -z "$BAZARR_VERSION" ]; then
-  [ $cleansubs_debug -ge 1 ] && echo "Debug|Not called within Bazarr. Logging to local file: cleansubs.log"
-  cleansubs_log=./cleansubs.log
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Not called from Bazarr. Using multiline output." | log
   cleansubs_multiline=1
 fi
 
@@ -220,7 +251,7 @@ BEGIN {
   FS = "\n"
   IGNORECASE = 1
   # Adds line feed to output when not called from Bazarr
-  if (MultiLine = 1) NL = "\n"
+  if (MultiLine == 1) NL = "\n"
   # This is required because BusyBox awk will not honor shell exported functions, so piping fails.
   writelog = "while read -r; do echo $(date +\"%Y-%-m-%-d %H:%M:%S.%1N\")\"|[$cleansubs_pid]$REPLY\" >>\"$cleansubs_log\"; done"
   # Start a new log entry
@@ -272,14 +303,14 @@ END {
     # No changes to file
     print "Info|No changes to subtitle file required. Total entries scanned: " NR | writelog
     MSGMAIN = MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR NL
-    printf MSGMAIN
+    printf "%s", MSGMAIN
     exit 1
   }
   # Write new subtitle file
   print "Info|Original entries: " NR ". Total entries kept: " Entries | writelog
   if (Debug >= 1) print "Debug|Writing new temporary file: " TempSub | writelog
   MSGMAIN = MSGMAIN "Original entries: " NR ". Total entries kept: " Entries
-  printf MSGMAIN "|" MSGEXT
+  printf "%s", MSGMAIN "|" MSGEXT
   for (i = 1; i <= Entries; i++)
     print Newentry[i] "\n" >> TempSub
   close(TempSub)
@@ -293,7 +324,7 @@ cleansubs_ret="${PIPESTATUS[2]}"  # captures awk exit status
 # No changes to subtitle file needed.  Do nothing.
 if [ $cleansubs_ret -eq 1 ]; then
   :
-  end_script 0
+  end_script ${cleansubs_exitstatus:-0}
 fi
 
 # awk script failed in an unknown way
@@ -307,7 +338,7 @@ fi
 
 # Check for non-empty file
 if [ ! -s "$cleansubs_tempsub" ]; then
-  cleansubs_message="Script failed. Unable to locate or invalid file: $cleansubs_tempsub"
+  cleansubs_message="Script failed. Unable to locate or invalid output file: $cleansubs_tempsub"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
   echo -n "\nERROR: $cleansubs_message"

@@ -19,7 +19,7 @@ The string matching only supports English at this time.
 
 ### Syntax
 The syntax for the command-line is:  
-`cleansubs.sh {-f|--file} <subtitle_file>
+`cleansubs.sh {-f|--file} <subtitle_file> [{-l|--log} <log_file>]
 
 Where:
 
@@ -27,6 +27,7 @@ Option|Argument|Description
 ---|---|---
 -f, --file|<subtitle_file>|The full path and file name to a subtitle file. In Bazarr, you should use the `{{subtitles}}` variable.
 -d, --debug|\[\<level\>\]|Enables debug logging. Level is optional.<br/>Default of 1 (low)<br/>2 includes extra output
+-l, --log|<log_file>|The log file name<br/>Default of /config/log/cleansubs.log
 --help| |Display help and exit.
 --version| |Display version and exit.
 
@@ -45,17 +46,16 @@ Removed subtitle entries are included in the Bazarr "Exception" details of each 
 
 #### Additional Log
 Because Bazarr rotates its log daily, I've found that having a separate script log file is beneficial.
-A separate log file is therefore created for script activity called:
+By default, a separate log file is therefore created for script activity called:
 
 `/config/log/cleansubs.log`
 
-This log must be inspected or downloaded outside of Bazarr.
+This log must be inspected or downloaded outside of Bazarr.  The log file name can be modified with the `--log` command-line option.
 
 Script activity, including errors, will appear in both the script log and the native Bazarr log.
 
 Log rotation is performed with 2 log files of 512KB each being kept.  
 
->Note: When run outside of Bazarr, the script will create a `cleansubs.log` file in the same directory that the script is executed from.
 ___
 
 # Credits
