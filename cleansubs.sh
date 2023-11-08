@@ -63,7 +63,7 @@ Options and Arguments:
 
 Example:
   $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
-  $cleansubs_script \"{{subtitles}}\" ;                                       # As used in Bazarr
+  $cleansubs_script -f \"{{subtitles}}\" ;                                    # As used in Bazarr
 "
   echo "$usage" >&2
 }
@@ -169,15 +169,15 @@ function end_script {
 
 # Check that the log file exists
 if [ ! -f "$cleansubs_log" ]; then
-  [ $cleansubs_debug -ge 1 ] && echo "Debug|Creating a new logfile: $cleansubs_log" | log
+  echo "Info|Creating a new logfile: $cleansubs_log"
   touch "$cleansubs_log" 2>&1
 fi
 
 # Check that the log file is writable
 if [ ! -w "$cleansubs_log" ]; then
-  cleansubs_log=/dev/null
   cleansubs_message="Error|Log file '$cleansubs_log' is not writable or does not exist."
   echo "$cleansubs_message" >&2
+  cleansubs_log=/dev/null
   cleansubs_exitstatus=2
 fi
 
