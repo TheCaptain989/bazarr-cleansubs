@@ -303,14 +303,14 @@ END {
     # No changes to file
     print "Info|No changes to subtitle file required. Total entries scanned: " NR | writelog
     MSGMAIN = MSGMAIN "No changes to subtitle file required. Total entries scanned: " NR NL
-    printf MSGMAIN
+    printf "%s", MSGMAIN
     exit 1
   }
   # Write new subtitle file
   print "Info|Original entries: " NR ". Total entries kept: " Entries | writelog
   if (Debug >= 1) print "Debug|Writing new temporary file: " TempSub | writelog
   MSGMAIN = MSGMAIN "Original entries: " NR ". Total entries kept: " Entries
-  printf MSGMAIN "|" MSGEXT
+  printf "%s", MSGMAIN "|" MSGEXT
   for (i = 1; i <= Entries; i++)
     print Newentry[i] "\n" >> TempSub
   close(TempSub)
@@ -338,7 +338,7 @@ fi
 
 # Check for non-empty file
 if [ ! -s "$cleansubs_tempsub" ]; then
-  cleansubs_message="Script failed. Unable to locate or invalid file: $cleansubs_tempsub"
+  cleansubs_message="Script failed. Unable to locate or invalid output file: $cleansubs_tempsub"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
   echo -n "\nERROR: $cleansubs_message"
