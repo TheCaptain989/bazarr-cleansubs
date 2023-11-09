@@ -15,6 +15,7 @@
 #  dos2unix
 #  stat
 #  basename
+#  dirname
 
 # Exit codes:
 #  0 - success
@@ -28,18 +29,13 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.02"
+export cleansubs_ver="1.02a"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
 export cleansubs_maxlog=2
 export cleansubs_debug=0
 export cleansubs_multiline=0
-
-# Check that log path exists
-if [ ! -d /config/log ]; then
-  cleansubs_log=./cleansubs.log
-fi
 
 # Usage function
 function usage {
@@ -167,16 +163,21 @@ function end_script {
 }
 ### End Functions
 
+# Check that log path exists
+if [ ! -d "$(dirname $cleansubs_log)" ]; then
+  [ $cleansubs_debug -ge 1 ] && echo "Debug|Log file path does not exist: '$(dirname $cleansubs_log)'. Using log file in current directory."
+  cleansubs_log=./cleansubs.log
+fi
+
 # Check that the log file exists
 if [ ! -f "$cleansubs_log" ]; then
-  echo "Info|Creating a new logfile: $cleansubs_log"
+  echo "Info|Creating a new log file: $cleansubs_log"
   touch "$cleansubs_log" 2>&1
 fi
 
 # Check that the log file is writable
 if [ ! -w "$cleansubs_log" ]; then
-  cleansubs_message="Error|Log file '$cleansubs_log' is not writable or does not exist."
-  echo "$cleansubs_message" >&2
+  echo "Error|Log file '$cleansubs_log' is not writable or does not exist." >&2
   cleansubs_log=/dev/null
   cleansubs_exitstatus=2
 fi
@@ -324,7 +325,7 @@ cleansubs_ret="${PIPESTATUS[2]}"  # captures awk exit status
 # No changes to subtitle file needed.  Do nothing.
 if [ $cleansubs_ret -eq 1 ]; then
   :
-  end_script ${cleansubs_exitstatus:-0}
+  end_script
 fi
 
 # awk script failed in an unknown way
