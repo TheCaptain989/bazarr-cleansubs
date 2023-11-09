@@ -272,7 +272,7 @@ $1 ~ /^[0-9]+$/ {
   Entry = Entry + indexdelta
 }
 # Get timestamp
-$2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3}$/ {
+$2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}[,.][0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}[,.][0-9]{1,3}$/ {
   Timestamp = $2
   sub(Timestamp, ""); sub(/\n\n/, "")
 }
@@ -281,7 +281,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
   # This was needed in older versions of Bazarr that did not escape log entries. 
   # gsub(/\n/, "<br/>")
   print "Info|Removing entry " (Entry - indexdelta) ": (" Timestamp ") " gensub(/\n/, "<br/>", "g", $0) | writelog
-  MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta)": " $0 "\\n" NL
+  MSGEXT = MSGEXT "Removing entry " (Entry - indexdelta) ": " $0 "\\n" NL
   indexdelta -= 1
   next
 }
@@ -294,8 +294,8 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2},[0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:[0-
     Timestamp = ""
   } else {
     # Add to Bazarr Exception log
-    print "Info|Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 | writelog
-    MSGEXT = MSGEXT "Skipping malformed entry " NR ". Entry: " Entry "," Timestamp "," $0 "\\n" NL
+    print "Info|Skipping malformed entry " NR ": " gensub(/\n/, "<br/>", "g", $0) | writelog
+    MSGEXT = MSGEXT "Skipping malformed entry " NR ": " $0 "\\n" NL
   }
 }
 END {
@@ -332,7 +332,6 @@ if [ $cleansubs_ret -ne 0 ]; then
   cleansubs_message="Script encountered an unknown error processing subtitle: $cleansubs_file"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
-  echo -n "\nERROR: $cleansubs_message"
   end_script 11
 fi
 
@@ -341,7 +340,6 @@ if [ ! -s "$cleansubs_tempsub" ]; then
   cleansubs_message="Script failed. Unable to locate or invalid output file: $cleansubs_tempsub"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
-  echo -n "\nERROR: $cleansubs_message"
   end_script 10
 fi
 
