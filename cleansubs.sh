@@ -16,6 +16,7 @@
 #  stat
 #  basename
 #  dirname
+#  printenv
 
 # Exit codes:
 #  0 - success
@@ -49,13 +50,15 @@ Usage:
   $0 {-f|--file} <subtitle_file> [{-l|--log} <log_file>] [{-d|--debug} [<level>]]
 
 Options and Arguments:
-  -f, --file <subtitle_file>       subtitle file in SRT format
-  -l, --log <log_file>             log file name
-                                   [default of /config/log/cleansubs.log]
-  -d, --debug [<level>]            enable debug logging
-                                   Level is optional, [default of 1 (low)]
-      --help                       display this help and exit
-      --version                    display script version and exit
+  -f, --file <subtitle_file>       Subtitle file in SRT format
+  -l, --log <log_file>             Log filename
+                                   [default: /config/log/cleansubs.log]
+  -d, --debug [<level>]            Enable debug logging
+                                   level is optional, between 1-3
+                                   1 is lowest, 3 is highest
+                                   [default: 1]
+      --help                       Display this help and exit
+      --version                    Display script version and exit
 
 Example:
   $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
