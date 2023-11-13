@@ -30,7 +30,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.02a"
+export cleansubs_ver="1.02b"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -134,8 +134,6 @@ if [ -n "$1" ]; then
     cleansubs_file="$1"
   fi
 fi
-# Set temporary file name
-export cleansubs_tempsub="${cleansubs_file}.tmp"
 
 ### Functions
 
@@ -229,13 +227,7 @@ if [[ "$cleansubs_file" != *.srt ]]; then
 fi
 
 # Generate temporary file name
-until [ ! -s "$cleansubs_tempsub" ]; do
-  # Temporary file already exists
-  [ $cleansubs_debug -ge 1 ] && echo "Debug|Temporary file \"$cleansubs_tempsub\" already exists. Incrementing by 1." | log
-  i=$((i+1))
-  cleansubs_tempsub="${cleansubs_tempsub%%.*}.srt.$i.tmp"
-done
-
+export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file%.*}_XXXXX.tmp")"
 [ $cleansubs_debug -ge 2 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
 #### BEGIN MAIN
@@ -341,7 +333,7 @@ fi
 
 # Check for non-empty file
 if [ ! -s "$cleansubs_tempsub" ]; then
-  cleansubs_message="Script failed. Unable to locate or invalid output file: $cleansubs_tempsub"
+  cleansubs_message="Script did not create a valid temporary output file: $cleansubs_tempsub"
   echo "Error|$cleansubs_message" | log
   echo "Error|$cleansubs_message" >&2
   end_script 10
