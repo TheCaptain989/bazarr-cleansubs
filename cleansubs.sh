@@ -227,7 +227,7 @@ if [[ "$cleansubs_file" != *.srt ]]; then
 fi
 
 # Generate temporary file name
-export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file%.*}_XXXXX.tmp")"
+export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file}.tmp.XXXXXX")"
 [ $cleansubs_debug -ge 2 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
 #### BEGIN MAIN
