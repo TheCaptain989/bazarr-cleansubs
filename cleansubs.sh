@@ -17,6 +17,7 @@
 #  basename
 #  dirname
 #  printenv
+#  mktemp
 
 # Exit codes:
 #  0 - success
@@ -30,7 +31,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.02b"
+export cleansubs_ver="1.02d"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -228,7 +229,7 @@ fi
 
 # Generate temporary file name
 export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file}.tmp.XXXXXX")"
-[ $cleansubs_debug -ge 2 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
+[ $cleansubs_debug -ge 1 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
 #### BEGIN MAIN
 cat "$cleansubs_file" | dos2unix | awk -v Debug=$cleansubs_debug \
@@ -340,6 +341,7 @@ if [ ! -s "$cleansubs_tempsub" ]; then
 fi
 
 # Overwrite the original subtitle file with the new file
+[ $cleansubs_debug -ge 1 ] && echo "Debug|Renaming \"$cleansubs_tempsub\" to \"$cleansubs_file\"" | log
 mv -f "$cleansubs_tempsub" "$cleansubs_file" 2>&1
 
 end_script
