@@ -19,7 +19,7 @@ The string matching only supports English at this time.
 
 ### Syntax
 The syntax for the command-line is:  
-`cleansubs.sh {-f|--file} <subtitle_file> [{-l|--log} <log_file>]
+`cleansubs.sh {-f|--file} <subtitle_file> [{-l|--log} <log_file>] [{-d|--debug} [<level>]]`
 
 Where:
 
