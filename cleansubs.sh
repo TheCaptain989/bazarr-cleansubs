@@ -143,7 +143,7 @@ fi
 function log {(
   while read -r; do
     # shellcheck disable=2046
-    echo $(date +"%Y-%-m-%-d %H:%M:%S.%1N")"|[$cleansubs_pid]$REPLY" >>"$cleansubs_log"
+    echo $(date +"%Y-%m-%d %H:%M:%S.%1N")"|[$cleansubs_pid]$REPLY" >>"$cleansubs_log"
     local cleansubs_filesize=$(stat -c %s "$cleansubs_log")
     if [ $cleansubs_filesize -gt $cleansubs_maxlogsize ]; then
       for i in $(seq $((cleansubs_maxlog-1)) -1 0); do
