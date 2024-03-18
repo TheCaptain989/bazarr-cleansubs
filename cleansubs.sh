@@ -250,7 +250,7 @@ BEGIN {
   # Adds line feed to output when not called from Bazarr
   if (MultiLine == 1) NL = "\n"
   # This is required because BusyBox awk will not honor shell exported functions, so piping fails.
-  writelog = "while read -r; do echo $(date +\"%Y-%-m-%-d %H:%M:%S.%1N\")\"|[$cleansubs_pid]$REPLY\" >>\"$cleansubs_log\"; done"
+  writelog = "while read -r; do echo $(date +\"%Y-%m-%d %H:%M:%S.%1N\")\"|[$cleansubs_pid]$REPLY\" >>\"$cleansubs_log\"; done"
   # Start a new log entry
   print "Info|Starting run for subtitle file: " SubTitle | writelog
   MSGMAIN = "cleansubs.sh: Subtitle file: " SubTitle "; "
