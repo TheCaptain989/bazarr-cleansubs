@@ -7,11 +7,16 @@ Only .SRT format subtitles are supported.
 2. Configure a custom script from the Bazarr *Settings* > *Subtitles* screen by typing the following in the **Post-processing command** field (Note the double quotes!):  
    **`/config/cleansubs.sh -f "{{subtitles}}" ;`**  
 
-   *Example*  
+   <details>
+   <summary>Screenshot</summary>
+
+   *Bazarr Post-Processing Example*  
    ![cleansubs](.assets/bazarr-settings-subtitles.png "Bazarr subtitles settings")
 
+   </details>
 
-   >**NOTE:** The original subtitle file will be deleted/overwritten and permanently lost.
+> [!CAUTION]
+> The original subtitle file will be deleted/overwritten and permanently lost.
 
 ## Usage Details
 The script is not configurable.  
@@ -21,19 +26,25 @@ The string matching only supports English at this time.
 The syntax for the command-line is:  
 `cleansubs.sh {-f|--file} <subtitle_file> [{-l|--log} <log_file>] [{-d|--debug} [<level>]]`
 
-Where:
+<details>
+<summary>Table of Command-Line Arguments</summary>
 
 Option|Argument|Description
 ---|---|---
--f, --file|<subtitle_file>|The full path and file name to a subtitle file. In Bazarr, you should use the `{{subtitles}}` variable.
--d, --debug|\[\<level\>\]|Enables debug logging. Level is optional.<br/>Default of 1 (low)<br/>2 includes extra output
--l, --log|<log_file>|The log file name<br/>Default of /config/log/cleansubs.log
---help| |Display help and exit.
---version| |Display version and exit.
+`-f`, `--file`|`<subtitle_file>`|The full path and file name to a subtitle file. In Bazarr, you should use the `{{subtitles}}` variable.
+`-d`, `--debug`|`[<level>]`|Enables debug logging. Level is optional.<br/>Default of 1 (low)<br/>2 includes extra output
+`-l`, `--log`|`<log_file>`|The log file name<br/>Default of `/config/log/cleansubs.log`
+`--help`| |Display help and exit.
+`--version`| |Display version and exit.
+
+</details>
 
 ### Logs
 Script logs are integrated into the Bazarr log file. The text output of the script is designed to be compatible with the Bazarr log file format. This has been tested with Bazarr version(s):
-- v0.8.2.4 - v1.3.0
+- v0.8.2.4 - v1.4.5
+
+<details>
+<summary>Example Log Entries</summary>
 
 *Example log entry with no changes*  
 ![normal log](.assets/bazarr-log1.png "Bazarr log entry")
@@ -43,6 +54,8 @@ Script logs are integrated into the Bazarr log file. The text output of the scri
 
 Removed subtitle entries are included in the Bazarr "Exception" details of each log entry.  
 ![cleaned subtitle log detail](.assets/bazarr-log2-detail.png "Bazarr log traceback")
+
+</details>
 
 #### Additional Log
 Because Bazarr rotates its log daily, I've found that having a separate script log file is beneficial.

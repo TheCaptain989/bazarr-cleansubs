@@ -31,7 +31,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.02d"
+export cleansubs_ver="1.03"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -67,6 +67,11 @@ Example:
 "
   echo "$usage" >&2
 }
+
+# Log command-line arguments
+if [ $# -ne 0 ]; then
+  cleansubs_prelogmessagedebug="Debug|Command line arguments are '$*'"
+fi
 
 # Process arguments
 # Taken from Drew Strokes post 3/24/2015:
@@ -196,6 +201,12 @@ if [ $cleansubs_debug -ge 1 ]; then
   echo "$cleansubs_message" | log
 fi
 
+# Log command line parameters
+if [ -n "$cleansubs_prelogmessagedebug" ]; then
+  # cleansubs_prelogmessagedebug is set above, before argument processing
+  [ $cleansubs_debug -ge 1 ] && echo "$cleansubs_prelogmessagedebug" | log
+fi
+
 # Log environment
 [ $cleansubs_debug -ge 2 ] && printenv | sort | sed 's/^/Debug|/' | log
 
@@ -227,7 +238,7 @@ if [[ "$cleansubs_file" != *.srt ]]; then
   end_script 6
 fi
 
-# Generate temporary file name
+# Create temporary filename
 export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file}.tmp.XXXXXX")"
 [ $cleansubs_debug -ge 1 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
