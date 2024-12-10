@@ -243,6 +243,7 @@ export cleansubs_tempsub="$(mktemp -u -- "${cleansubs_file}.tmp.XXXXXX")"
 [ $cleansubs_debug -ge 1 ] && echo "Debug|Using temporary file \"$cleansubs_tempsub\"" | log
 
 #### BEGIN MAIN
+# shellcheck disable=SC2002
 cat "$cleansubs_file" | dos2unix | awk -v Debug=$cleansubs_debug \
 -v SubTitle="$cleansubs_file" \
 -v TempSub="$cleansubs_tempsub" \
