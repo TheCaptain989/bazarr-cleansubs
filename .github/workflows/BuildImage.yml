@@ -1,4 +1,4 @@
-name: Build Image
+name: Lint Code
 
 on: [push, workflow_dispatch]
 

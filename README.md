@@ -2,6 +2,10 @@
 A shell script to automatically remove common annoying scene branding and attribution entries from subtitle files.
 Only .SRT format subtitles are supported.
 
+<!-- markdownlint-disable -->
+[![Lint Code](https://github.com/TheCaptain989/bazarr-cleansubs/actions/workflows/BuildImage.yml/badge.svg)](https://github.com/TheCaptain989/bazarr-cleansubs/actions/workflows/BuildImage.yml)
+<!-- markdownlint-restore -->  
+
 # Installation
 1. Place the `cleansubs.sh` shell script file in the root directory of Bazarr, usually `/config`
 2. Configure a custom script from the Bazarr *Settings* > *Subtitles* screen by typing the following in the **Post-processing command** field (Note the double quotes!):  
