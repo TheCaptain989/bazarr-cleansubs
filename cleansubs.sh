@@ -31,7 +31,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.03"
+export cleansubs_ver="1.3.1"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -41,6 +41,10 @@ export cleansubs_multiline=0
 
 # Usage function
 function usage {
+  usage="Try '$cleansubs_script --help' for more information."
+  echo "$usage" >&2
+}
+function long_usage {
   usage="
 $cleansubs_script   Version: $cleansubs_ver
 Subtitle processing script designed for use with Bazarr
@@ -52,6 +56,8 @@ Usage:
 
 Options and Arguments:
   -f, --file <subtitle_file>       Subtitle file in SRT format
+                                   In Bazarr, this is normally set to
+                                   \"{{subtitles}}\"
   -l, --log <log_file>             Log filename
                                    [default: /config/log/cleansubs.log]
   -d, --debug [<level>]            Enable debug logging
@@ -62,10 +68,10 @@ Options and Arguments:
       --version                    Display script version and exit
 
 Example:
-  $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
   $cleansubs_script -f \"{{subtitles}}\" ;                                    # As used in Bazarr
+  $cleansubs_script -f \"/video/The Muppet Show 02x13 - Zero Mostel.en.srt\"  # When used standalone on the command line
 "
-  echo "$usage" >&2
+  echo "$usage"
 }
 
 # Log command-line arguments
@@ -74,7 +80,7 @@ if [ $# -ne 0 ]; then
 fi
 
 # Process arguments
-# Taken from Drew Strokes post 3/24/2015:
+# Taken from Drew Stokes post 3/24/2015:
 #  https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
 unset cleansubs_pos_params
 while (( "$#" )); do
@@ -108,8 +114,8 @@ while (( "$#" )); do
         exit 1
       fi
     ;;
-    --help ) # Display usage
-      usage
+    --help ) # Display full usage
+      long_usage
       exit 0
     ;;
     --version ) # Display version
@@ -142,7 +148,6 @@ if [ -n "$1" ]; then
 fi
 
 ### Functions
-
 # Can still go over cleansubs_maxlog if read line is too long
 ## Must include whole function in subshell for read to work!
 function log {(
@@ -179,7 +184,7 @@ fi
 # Check that the log file exists
 if [ ! -f "$cleansubs_log" ]; then
   echo "Info|Creating a new log file: $cleansubs_log"
-  touch "$cleansubs_log" 2>&1
+  touch "$cleansubs_log"
 fi
 
 # Check that the log file is writable
@@ -251,7 +256,7 @@ cat "$cleansubs_file" | dos2unix | awk -v Debug=$cleansubs_debug \
 function escape_html(str){
   # escape HTML in subs
   # This was needed in older versions of Bazarr that did not escape log entries.
-  # It is not used current, but leaving here for posterity.
+  # It is not used currently, but leaving here for posterity.
   gsub(/&/, "\\&amp;", str); gsub(/</, "\\&lt;", str); gsub(/>/, "\\&gt;", str); gsub(/"/, "\\&quot;", str)
   return str
 }
@@ -338,22 +343,22 @@ fi
 
 # awk script failed in an unknown way
 if [ $cleansubs_ret -ne 0 ]; then
-  cleansubs_message="Script encountered an unknown error processing subtitle: $cleansubs_file"
-  echo "Error|$cleansubs_message" | log
-  echo "Error|$cleansubs_message" >&2
+  cleansubs_message="Error|Script encountered an unknown error processing subtitle: $cleansubs_file"
+  echo "$cleansubs_message" | log
+  echo "$cleansubs_message" >&2
   end_script 11
 fi
 
 # Check for non-empty file
 if [ ! -s "$cleansubs_tempsub" ]; then
-  cleansubs_message="Script did not create a valid temporary output file: $cleansubs_tempsub"
-  echo "Error|$cleansubs_message" | log
-  echo "Error|$cleansubs_message" >&2
+  cleansubs_message="Error|Script did not create a valid temporary output file: $cleansubs_tempsub"
+  echo "$cleansubs_message" | log
+  echo "$cleansubs_message" >&2
   end_script 10
 fi
 
 # Overwrite the original subtitle file with the new file
 [ $cleansubs_debug -ge 1 ] && echo "Debug|Renaming \"$cleansubs_tempsub\" to \"$cleansubs_file\"" | log
-mv -f "$cleansubs_tempsub" "$cleansubs_file" 2>&1
+mv -f "$cleansubs_tempsub" "$cleansubs_file"
 
 end_script
