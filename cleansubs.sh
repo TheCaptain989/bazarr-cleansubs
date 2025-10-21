@@ -31,7 +31,7 @@
 
 ### Variables
 export cleansubs_script=$(basename "$0")
-export cleansubs_ver="1.3.1"
+export cleansubs_ver="1.3.2"
 export cleansubs_pid=$$
 export cleansubs_log=/config/log/cleansubs.log
 export cleansubs_maxlogsize=512000
@@ -291,7 +291,7 @@ $2 ~ /^[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}[,.][0-9]{1,3} --> [0-9]{1,2}:[0-9]{1,2}:
   sub(Timestamp, ""); sub(/\n\n/, "")
 }
 # Match on objectionable strings
-/^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext/ {
+/^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|twitter\.com|flixify|YTS\.ME|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext|movieddl\.me/ {
   # This was needed in older versions of Bazarr that did not escape log entries. 
   # gsub(/\n/, "<br/>")
   print "Info|Removing entry " (Entry - indexdelta) ": (" Timestamp ") " gensub(/\n/, "<br/>", "g", $0) | writelog
