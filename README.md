@@ -38,8 +38,8 @@ Option|Argument|Description
 `-f`, `--file`|`<subtitle_file>`|The full path and filename to a subtitle file. In Bazarr, you should use the `{{subtitles}}` variable.
 `-d`, `--debug`|`[<level>]`|Enables debug logging. Level is optional.<br/>Default of 1 (low)<br/>2 includes extra output
 `-l`, `--log`|`<log_file>`|The log filename<br/>Default of `/config/log/cleansubs.log`
-`--help`| |Display help and exit.
-`--version`| |Display version and exit.
+`--help`||Display help and exit.
+`--version`||Display version and exit.
 
 </details>
 
