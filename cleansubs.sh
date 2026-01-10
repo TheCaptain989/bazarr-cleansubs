@@ -35,7 +35,7 @@ function initialize_variables {
   # Initialize variables
   
   export cleansubs_script=$(basename "$0")
-  export cleansubs_ver="1.4"
+  export cleansubs_ver="1.4.1"
   export cleansubs_pid=$$
   export cleansubs_log=/config/log/cleansubs.log
   export cleansubs_maxlogsize=512000
@@ -357,7 +357,7 @@ function clean_subtitle {
     sub(Timestamp, ""); sub(/\n\n/, "")
   }
   # Match on objectionable strings
-  /^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|from|:) |opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|gioni666|twitter\.com|flixify|YTS\.MX|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext|movieddl\.me|allsubs\.org|YT[SX](-MOVIE)?\.(COM|MX)|subtitrari\.pro|sab\.bz|cenflix\.co/ {
+  /^(subtitle[sd] )?(precisely )?((re)?sync(ed|hronized)?|encoded|improved|production|extracted|correct(ed|ions)|subtitle[sd]|downloaded|conformed)( (&|and) correct(ed|ions))?( by|from|:) |Captioning made possible by|captioning performed by|performance of captions|opensubtitles|subscene|subtext:|purevpn|english (subtitles|(- )?sdh)|trailers\.to|osdb\.link|thepiratebay\.|explosiveskull|gioni666|twitter\.com|flixify|YTS\.MX|saveanilluminati\.com|isubdb\.com|ADMITME\.APP|addic7ed\.com|sumnix|crazykyootie|mstoll|DivX|TLF subTeam|openloadflix\.com|blogspot\.com|visiontext|movieddl\.me|allsubs\.org|YT[SX](-MOVIE)?\.(COM|MX)|subtitrari\.pro|sab\.bz|cenflix\.co/ {
     # This was needed in older versions of Bazarr that did not escape log entries. 
     # gsub(/\n/, "<br/>")
     print "Info|Removing entry " (Entry - indexdelta) ": (" Timestamp ") " gensub(/\n/, "<br/>", "g", $0) | writelog
