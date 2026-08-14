@@ -35,7 +35,7 @@ function initialize_variables {
   # Initialize variables
   
   export cleansubs_script=$(basename "$0")
-  export cleansubs_ver="1.4.1"
+  export cleansubs_ver="1.5.0"
   export cleansubs_pid=$$
   export cleansubs_log=/config/log/cleansubs.log
   export cleansubs_maxlogsize=512000
@@ -49,11 +49,12 @@ function main {
   # Main script execution
 
   initialize_variables
-  process_command_line "$@"
-  check_log
-  check_required_binaries
-  log_first_debug_messages
+  pre_process_command_line "$@"
+  init_log
   check_for_bazarr
+  process_command_line
+  check_required_binaries
+  log_first_debug_messages "$@"
   check_subtitle
   clean_subtitle
   replace_original_subtitle
@@ -94,18 +95,56 @@ Example:
 "
   echo "$usage"
 }
+function pre_process_command_line {
+  # Pre-process the command line, handling only the options that must be resolved
+  # before logging begins. The remaining arguments are returned in cleansubs_args, which
+  # process_command_line restores with: eval set -- "$cleansubs_args"
+
+  local pos_params
+  while (( "$#" )); do
+    case "$1" in
+      -l|--log)
+        # Log file
+        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+          export cleansubs_log="$2"
+          shift 2
+        else
+          echo "Error: Invalid option: $1 requires an argument." >&2
+          usage
+          exit 1
+        fi
+      ;;
+      --help)
+        # Display full usage
+        long_usage
+        exit 0
+      ;;
+      --version)
+        # Display version
+        echo "$cleansubs_script $cleansubs_ver"
+        exit 0
+      ;;
+      *)
+        # Preserve every other argument for process_command_line
+        # This quoting and printf/sed fixes all special shell characters in files names
+        pos_params="$pos_params '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
+        shift
+      ;;
+    esac
+  done
+  export cleansubs_args="$pos_params"
+}
 function process_command_line {
   # Process arguments, either from the command line or from the environment variable
+  # The log, help, and version options are handled earlier, by pre_process_command_line
 
-  # Log command-line arguments
-  if [ $# -ne 0 ]; then
-    export cleansubs_prelogmessagedebug="Debug|Command line arguments are '$*'"
-  fi
+  # Restore the command line, minus the options already consumed
+  eval set -- "$cleansubs_args"
 
   # Process arguments
   # Taken from Drew Stokes post 3/24/2015:
   #  https://medium.com/@Drew_Stokes/bash-argument-parsing-54f3b81a6a8f
-  unset pos_params
+  local pos_params
   while (( "$#" )); do
     case "$1" in
       -d|--debug )
@@ -124,40 +163,23 @@ function process_command_line {
           export cleansubs_file="$2"
           shift 2
         else
-          echo "Error|Invalid option: $1 requires an argument." >&2
+          local message="Invalid option: $1 requires an argument."
+          echo "Error|$message" | log
+          echo "Error: $message" >&2
           usage
           exit 1
         fi
-      ;;
-      -l|--log )
-        # Log file
-        if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-          export cleansubs_log="$2"
-          shift 2
-        else
-          echo "Error|Invalid option: $1 requires an argument." >&2
-          usage
-          exit 1
-        fi
-      ;;
-      --help )
-        # Display full usage
-        long_usage
-        exit 0
-      ;;
-      --version )
-        # Display version
-        echo "$cleansubs_script $cleansubs_ver"
-        exit 0
       ;;
       -*)
         # Unknown option
-        echo "Error|Unknown option: $1" >&2
+        local message="Unknown option: $1"
+        echo "Error|$message" | log
+        echo "Error: $message" >&2
         usage
         exit 20
       ;;
       *)
-        # preserve positional arguments
+        # Preserve positional arguments
         # This quoting and printf/sed fixes all special shell characters in files names
         local pos_params="$pos_params '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
         shift
@@ -170,9 +192,11 @@ function process_command_line {
   # Check for and assign positional arguments. Named override positional.
   if [ -n "$1" ]; then
     if [ -n "$cleansubs_file" ]; then
-      echo "Warning|Both positional and named arguments set for subtitle file. Using $cleansubs_file" >&2
+      local message="Both positional and named arguments set for subtitle file. Using $cleansubs_file"
+      echo "Warning|$message" | log
+      echo "Warning: $message" >&2
     else
-      [ $cleansubs_debug -ge 1 ] && echo "Debug|Using position argument for subtitle file: $1"
+      [ $cleansubs_debug -ge 1 ] && echo "Debug|Using positional argument for subtitle file: $1" | log
       export cleansubs_file="$1"
     fi
   fi
@@ -213,24 +237,24 @@ function change_exit_status {
     export cleansubs_exitstatus="$exit_status"
   fi
 }
-function check_log {
-  # Log file checks
+function init_log {
+  # Log file initialization
 
   # Check that log path exists
   if [ ! -d "$(dirname "$cleansubs_log")" ]; then
-    [ $cleansubs_debug -ge 1 ] && echo "Debug|Log file path does not exist: '$(dirname "$cleansubs_log")'. Using log file in current directory."
+    [ $cleansubs_debug -ge 1 ] && echo "Debug: Log file path does not exist: '$(dirname "$cleansubs_log")'. Using log file in current directory."
     export cleansubs_log=./cleansubs.txt
   fi
 
   # Check that the log file exists
   if [ ! -f "$cleansubs_log" ]; then
-    echo "Info|Creating a new log file: $cleansubs_log"
+    echo "Info: Creating a new log file: $cleansubs_log"
     touch "$cleansubs_log"
   fi
 
   # Check that the log file is writable
   if [ ! -w "$cleansubs_log" ]; then
-    echo "Error|Log file '$cleansubs_log' is not writable or does not exist." >&2
+    echo "Error: Log file '$cleansubs_log' is not writable or does not exist." >&2
     export cleansubs_log=/dev/null
     change_exit_status 2
   fi
@@ -240,27 +264,25 @@ function check_required_binaries {
 
   for cleansubs_needed_file in "/usr/bin/dos2unix" "/usr/bin/awk"; do
     if [ ! -f "$cleansubs_needed_file" ]; then
-      local message="Error|$cleansubs_needed_file is required by this script"
-      echo "$message" | log
-      echo "$message" >&2
+      local message="$cleansubs_needed_file is required by this script"
+      echo "Error|$message" | log
+      echo "Error: $message" >&2
       end_script 4
     fi
   done
 }
 function log_first_debug_messages {
   # First log messages
+  # The original, unprocessed command line is passed in as the arguments
 
-  # Log Debug state
   if [ $cleansubs_debug -ge 1 ]; then
-    local message="Debug|Running ${cleansubs_script} version ${cleansubs_ver} with debug logging level ${cleansubs_debug}. Subtitle file: $cleansubs_file"
-    echo "$message" | log
-    echo "$message" >&2
-  fi
+    # Log Debug state
+    local message="Running ${cleansubs_script} version ${cleansubs_ver} with debug logging level ${cleansubs_debug}. Subtitle file: $cleansubs_file"
+    echo "Debug|$message" | log
+    echo "Debug: $message"
 
-  # Log command line parameters
-  if [ -n "$cleansubs_prelogmessagedebug" ]; then
-    # cleansubs_prelogmessagedebug is set above, before argument processing
-    [ $cleansubs_debug -ge 1 ] && echo "$cleansubs_prelogmessagedebug" | log
+    # Log command line parameters
+    [ $# -ne 0 ] && echo "Debug|Command line arguments are '$*'" | log
   fi
 
   # Log environment
@@ -279,18 +301,18 @@ function check_subtitle {
 
   # Check if subtitle file variable is blank
   if [ -z "$cleansubs_file" ]; then
-    local message="Error|No subtitle file specified! -f option not specified on command line."
-    echo "$message" | log
-    echo "$message" >&2
+    local message="No subtitle file specified! -f option not specified on command line."
+    echo "Error|$message" | log
+    echo "Error: $message" >&2
     usage 
     end_script 1
   fi
 
   # Check if source subtitle exists
   if [ ! -f "$cleansubs_file" ]; then
-    local message="Error|Input file not found: \"$cleansubs_file\""
-    echo "$message" | log
-    echo "$message" >&2
+    local message="Input file not found: \"$cleansubs_file\""
+    echo "Error|$message" | log
+    echo "Error: $message" >&2
     usage
     end_script 5
   fi
@@ -298,9 +320,9 @@ function check_subtitle {
   # Check if subtitle is in the expected format
   # This script only works on SRT subtitles
   if [[ "$cleansubs_file" != *.srt ]]; then
-    local message="Error|Expected SRT file. Incorrect file suffix: \"$cleansubs_file\""
-    echo "$message" | log
-    echo "$message" >&2
+    local message="Expected SRT file. Incorrect file suffix: \"$cleansubs_file\""
+    echo "Error|$message" | log
+    echo "Error: $message" >&2
     usage
     end_script 6
   fi
@@ -407,17 +429,17 @@ function clean_subtitle {
 
   # awk script failed in an unknown way
   if [ $return -ne 0 ]; then
-    local message="Error|Script encountered an unknown error processing subtitle: $cleansubs_file"
-    echo "$message" | log
-    echo "$message" >&2
+    local message="Script encountered an unknown error processing subtitle: $cleansubs_file"
+    echo "Error|$message" | log
+    echo "Error: $message" >&2
     end_script 11
   fi
 
   # Check for non-empty file
   if [ ! -s "$cleansubs_tempsub" ]; then
-    local message="Error|Unable to locate or invalid cleaned file: $cleansubs_tempsub"
-    echo "$message" | log
-    echo "$message" >&2
+    local message="Unable to locate or invalid cleaned file: $cleansubs_tempsub"
+    echo "Error|$message" | log
+    echo "Error: $message" >&2
     end_script 10
   fi
 }

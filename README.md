@@ -45,7 +45,7 @@ Option|Argument|Description
 
 ### Logs
 Script logs are integrated into the Bazarr log file. The text output of the script is designed to be compatible with the Bazarr log file format. This has been tested with Bazarr versions:
-- v0.8.2.4 - v1.5.4
+- v0.8.2.4 - v1.6.0
 
 <details>
 <summary>Example Log Entries</summary>
