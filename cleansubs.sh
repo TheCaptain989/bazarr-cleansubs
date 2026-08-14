@@ -52,7 +52,7 @@ function main {
   pre_process_command_line "$@"
   init_log
   check_for_bazarr
-  process_command_line
+  process_command_line "$@"
   check_required_binaries
   log_first_debug_messages "$@"
   check_subtitle

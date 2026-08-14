@@ -12,7 +12,7 @@ jobs:
       statuses: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
@@ -23,8 +23,6 @@ jobs:
           VALIDATE_BASH: true
           BASH_SEVERITY: style
           BASH_FILE_NAME: .shellcheckrc
-          # Adding this here for now becaue the config file does not work
-          # SHELLCHECK_OPTS: '--exclude SC1090,SC1091,SC2086,SC2155,SC2166'
           VALIDATE_BASH_EXEC: true
           VALIDATE_GITLEAKS: true
           VALIDATE_MARKDOWN: true
